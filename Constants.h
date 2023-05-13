@@ -7,6 +7,16 @@
 //                                                     //
 //=====================================================//
 
+// Standard modifiers
+
+#define KEYBOARD_LEFT_CTRL 0b00000001
+#define KEYBOARD_LEFT_SHIFT 0b00000010
+#define KEYBOARD_LEFT_ALT 0b00000100
+#define KEYBOARD_LEFT_GUI 0b00001000
+#define KEYBOARD_RIGHT_CTRL 0b00010000
+#define KEYBOARD_RIGHT_SHIFT 0b00100000
+#define KEYBOARD_RIGHT_ALT 0b01000000
+
 // Letters
 #define KEYBOARD_U 0x18
 #define KEYBOARD_I 0x0C
@@ -16,6 +26,18 @@
 #define KEYBOARD_K 0x0E
 #define KEYBOARD_L 0x0F
 #define KEYBOARD_M 0x10
+
+// Numbers
+#define KEYBOARD_1 0x1E
+#define KEYBOARD_2 0x1F
+#define KEYBOARD_3 0x20
+#define KEYBOARD_4 0x21
+#define KEYBOARD_5 0x22
+#define KEYBOARD_6 0x23
+#define KEYBOARD_7 0x24
+#define KEYBOARD_8 0x25
+#define KEYBOARD_9 0x26
+#define KEYBOARD_0 0x27
 
 // Misc keys (Keyboard code // Keyboard.h code)
 #define KEYBOARD_SPACE 0x2C         // 0x20
@@ -93,17 +115,23 @@ bool DEBUG_ENABLED = false;
 // Custom modifier keys
 #define CUSTOM_MOD_KEY_1 KEYBOARD_SPACE
 
-// Number of modified keys
+// Number of keys modified by 1st modifier
 #define MODIFIED_KEYS_NUM_1 10
 
+// Number of keys modified by left Alt
+#define L_ALT_MODIFIED_KEYS_NUM 13
+
 // Number of key pairs if struct KEYSMAP
-#define KEY_CODES_NUM 59
+#define KEY_CODES_NUM 60
 
 // Number of custom modifier keys
 #define CUSTOM_MODIFIER_KEYS_NUM 1
 
 // Number of standard modifier keys
 #define STANDARD_MODIFIER_KEYS_NUM 8
+
+// Number of redefined standard modifier keys
+#define REDEFINED_MODIFIER_KEYS_NUM 1
 
 // Interruption timeout
 #define INTERRUPTION_TIMEOUT 100
@@ -140,6 +168,40 @@ private:
 };
 
 
+// Map of keys modified by left Alt
+struct L_ALT_MODIFIED_KEYS_MAP {
+
+  struct ORIGINAL_MODIFIED_KEY_PAIR {
+    uint8_t originalKey;
+    uint8_t modifiedKey;
+  };
+
+  ORIGINAL_MODIFIED_KEY_PAIR map[L_ALT_MODIFIED_KEYS_NUM] = {
+    OriginalModifiedKeyPair(KEYBOARD_APOSTROPHE, 0x00),
+    OriginalModifiedKeyPair(KEYBOARD_1, KEYBOARD_F1),
+    OriginalModifiedKeyPair(KEYBOARD_2, KEYBOARD_F2),
+    OriginalModifiedKeyPair(KEYBOARD_3, KEYBOARD_F3),
+    OriginalModifiedKeyPair(KEYBOARD_4, KEYBOARD_F4),
+    OriginalModifiedKeyPair(KEYBOARD_5, KEYBOARD_F5),
+    OriginalModifiedKeyPair(KEYBOARD_6, KEYBOARD_F6),
+    OriginalModifiedKeyPair(KEYBOARD_7, KEYBOARD_F7),
+    OriginalModifiedKeyPair(KEYBOARD_8, KEYBOARD_F8),
+    OriginalModifiedKeyPair(KEYBOARD_9, KEYBOARD_F9),
+    OriginalModifiedKeyPair(KEYBOARD_0, KEYBOARD_F10),
+    OriginalModifiedKeyPair(KEYBOARD_MINUS, KEYBOARD_F11),
+    OriginalModifiedKeyPair(KEYBOARD_EQUALS, KEYBOARD_F12),
+  };
+
+private:
+  ORIGINAL_MODIFIED_KEY_PAIR OriginalModifiedKeyPair(uint8_t originalKey, uint8_t modifiedKey) {
+    ORIGINAL_MODIFIED_KEY_PAIR pair{};
+    pair.originalKey = originalKey;
+    pair.modifiedKey = modifiedKey;
+    return pair;
+  }
+};
+
+
 // Map of pairs of keyboard key code and key code for <Keyboard.h> library
 struct KEYSMAP {
 
@@ -150,6 +212,9 @@ struct KEYSMAP {
 
   // this map has to be sorted by kbdCode to provide binary search
   KEYS_PAIR map[KEY_CODES_NUM] = {
+    //==========TECHNICAL==========//
+    KeysPair(0x00, 0x60),
+    //==========TECHNICAL==========//
     KeysPair(0x28, 0xB0),
     KeysPair(0x29, 0xB1),
     KeysPair(0x2A, 0xB2),
@@ -161,7 +226,10 @@ struct KEYSMAP {
     KeysPair(0x31, 0x5C),
     KeysPair(0x33, 0x3B),
     KeysPair(0x34, 0x27),
-    KeysPair(0x35, 0x60),
+    //==========REDEFINED==========//
+    //  KeysPair(0x35, 0x60),
+    KeysPair(0x35, 0xB1),
+    //==========REDEFINED==========//
     KeysPair(0x36, 0x2C),
     KeysPair(0x37, 0x2E),
     KeysPair(0x38, 0x2F),
@@ -224,7 +292,7 @@ private:
 // State of standard modifier keys
 struct STANDARD_MODIFIER_KEYS_STATE {
 
-  struct KEY_STATE_PAIR {
+  struct KEY_STATE {
     uint8_t key;
     uint8_t state;
   };
@@ -239,20 +307,20 @@ struct STANDARD_MODIFIER_KEYS_STATE {
   uint8_t RIGHT_ALT_STATE_INDEX = 0x06;
   uint8_t RIGHT_GUI_STATE_INDEX = 0x07;
 
-  KEY_STATE_PAIR map[STANDARD_MODIFIER_KEYS_NUM] = {
-    KeyStatePair(KEY_LEFT_CTRL),
-    KeyStatePair(KEY_LEFT_SHIFT),
-    KeyStatePair(KEY_LEFT_ALT),
-    KeyStatePair(KEY_LEFT_GUI),
-    KeyStatePair(KEY_RIGHT_CTRL),
-    KeyStatePair(KEY_RIGHT_SHIFT),
-    KeyStatePair(KEY_RIGHT_ALT),
-    KeyStatePair(KEY_RIGHT_GUI)
+  KEY_STATE map[STANDARD_MODIFIER_KEYS_NUM] = {
+    KeyState(KEY_LEFT_CTRL),
+    KeyState(KEY_LEFT_SHIFT),
+    KeyState(KEY_LEFT_ALT),
+    KeyState(KEY_LEFT_GUI),
+    KeyState(KEY_RIGHT_CTRL),
+    KeyState(KEY_RIGHT_SHIFT),
+    KeyState(KEY_RIGHT_ALT),
+    KeyState(KEY_RIGHT_GUI)
   };
 
 private:
-  KEY_STATE_PAIR KeyStatePair(uint8_t key) {
-    KEY_STATE_PAIR pair{};
+  KEY_STATE KeyState(uint8_t key) {
+    KEY_STATE pair{};
     pair.key = key;
     pair.state = 0;
     return pair;
@@ -270,17 +338,39 @@ struct CUSTOM_MODIFIER_KEYS_STATE {
     bool used;
   };
 
-  KEY_STATE_SET map[CUSTOM_MODIFIER_KEYS_NUM] = {
-    KeyStatePair(CUSTOM_MOD_KEY_1, true)
+  KEY_STATE_SET stateSet[CUSTOM_MODIFIER_KEYS_NUM] = {
+    KeyStateSet(CUSTOM_MOD_KEY_1, true)
   };
 
 private:
-  KEY_STATE_SET KeyStatePair(uint8_t key, bool cached) {
+  KEY_STATE_SET KeyStateSet(uint8_t key, bool cached) {
     KEY_STATE_SET set{};
     set.key = key;
     set.cached = cached;
     set.state = 0;
     set.used = false;
+    return set;
+  }
+};
+
+
+// State of redefined modifier keys
+struct REDEFINED_MODIFIER_KEYS_STATE {
+
+  struct KEY_STATE_SET {
+    uint8_t key;
+    uint8_t state;
+  };
+
+  KEY_STATE_SET map[REDEFINED_MODIFIER_KEYS_NUM] = {
+    KeyStateSet(KEYBOARD_RIGHT_ALT)
+  };
+
+private:
+  KEY_STATE_SET KeyStateSet(uint8_t key) {
+    KEY_STATE_SET set{};
+    set.key = key;
+    set.state = 0;
     return set;
   }
 };
@@ -309,8 +399,10 @@ private:
 };
 
 
-struct MODIFIED_KEYS_MAP_1 modifiedKeysMap_1; // Map of modified keys
-struct KEYSMAP keysMap; // Map of pairs of keyboard key code and key code for <Keyboard.h> library
-struct STANDARD_MODIFIER_KEYS_STATE standardModState; // State of standard modifier keys
-struct CUSTOM_MODIFIER_KEYS_STATE customModState; // State of custom modifier keys
-struct CACHED_KEY cachedKey; // Cached key
+struct MODIFIED_KEYS_MAP_1 modifiedKeysMap_1;            // Map of keys modified by custom modifier 1
+struct L_ALT_MODIFIED_KEYS_MAP lAltModifiedKeysMap;      // Map of keys modified by left Alt
+struct KEYSMAP keysMap;                                  // Map of pairs of keyboard key code and key code for <Keyboard.h> library
+struct STANDARD_MODIFIER_KEYS_STATE standardModState;    // State of standard modifier keys
+struct CUSTOM_MODIFIER_KEYS_STATE customModState;        // State of custom modifier keys
+struct REDEFINED_MODIFIER_KEYS_STATE redefinedModState;  // State of redefined modifier keys
+struct CACHED_KEY cachedKey;                             // Cached key

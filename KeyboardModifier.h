@@ -38,6 +38,12 @@ protected:
 
   void OnControlKeysChanged(uint8_t before, uint8_t after);
   void SwitchControlKey(uint8_t key);
+
+  void OnRedefinedModifierKeyDown(uint8_t mod, uint8_t key);
+  void OnRedefinedModifierKeyUp(uint8_t mod, uint8_t key);
+
+  void ReleaseKeyOnAllLayers(uint8_t key);
+  void RefreshAllStates();
 };
 
 
@@ -114,10 +120,10 @@ void ModifierEngine::PrintKey(uint8_t m, uint8_t key) {
 void ModifierEngine::ProcessCachedKey() {
   if (cachedKey.key.key != 0xFF && millis() - cachedKey.key.time >= INTERRUPTION_TIMEOUT) {
     if (cachedKey.key.released) {
-      Keyboard.write(customKeyMapper.Modify(customModState.map[cachedKey.key.customModifierIndex].key, cachedKey.key.key));
+      Keyboard.write(customKeyMapper.Modify(customModState.stateSet[cachedKey.key.customModifierIndex].key, cachedKey.key.key));
       cachedKey.key.released = false;
     } else {
-      Keyboard.press(customKeyMapper.Modify(customModState.map[cachedKey.key.customModifierIndex].key, cachedKey.key.key));
+      Keyboard.press(customKeyMapper.Modify(customModState.stateSet[cachedKey.key.customModifierIndex].key, cachedKey.key.key));
     }
     cachedKey.key.key = 0xFF;
   }
@@ -131,11 +137,20 @@ void ModifierEngine::OnKeyDown(uint8_t mod, uint8_t key) {
     PrintKey(mod, key);
   }
 
+  // If mod is redefined standard modifier
+  for (uint8_t i = 0; i < REDEFINED_MODIFIER_KEYS_NUM; i++) {
+    if ((redefinedModState.map[i].key & mod) == redefinedModState.map[i].key) {
+      redefinedModState.map[i].state = 1;
+      OnRedefinedModifierKeyDown(redefinedModState.map[i].key, key);
+      return;
+    }
+  }
+
   // If standard modifier key holded
   for (uint8_t i = 0; i < STANDARD_MODIFIER_KEYS_NUM; i++) {
     if (standardModState.map[i].state == 1) {
       for (uint8_t j = 0; j < CUSTOM_MODIFIER_KEYS_NUM; j++) {
-        if (customModState.map[j].state == 1) {
+        if (customModState.stateSet[j].state == 1) {
           break;
         }
         Keyboard.press(standardKeyMapper.OemToKeyboardHCode(key));
@@ -147,18 +162,18 @@ void ModifierEngine::OnKeyDown(uint8_t mod, uint8_t key) {
 
   // If key is custom modifier key
   for (uint8_t i = 0; i < CUSTOM_MODIFIER_KEYS_NUM; i++) {
-    if (customModState.map[i].key == key) {
-      customModState.map[i].state = 1;
+    if (customModState.stateSet[i].key == key) {
+      customModState.stateSet[i].state = 1;
       return;
     }
   }
 
   // If key isn't custom modifier key, but custom modifier key is pressed
   for (uint8_t i = 0; i < CUSTOM_MODIFIER_KEYS_NUM; i++) {
-    if (customModState.map[i].state == 1) {
-      customModState.map[i].used = true;
-      if (!customModState.map[i].cached) {
-        Keyboard.press(customKeyMapper.Modify(customModState.map[i].key, key));
+    if (customModState.stateSet[i].state == 1) {
+      customModState.stateSet[i].used = true;
+      if (!customModState.stateSet[i].cached) {
+        Keyboard.press(customKeyMapper.Modify(customModState.stateSet[i].key, key));
       } else {
         cachedKey.key.key = key;
         cachedKey.key.customModifierIndex = i;
@@ -179,13 +194,22 @@ void ModifierEngine::OnKeyUp(uint8_t mod, uint8_t key) {
     PrintKey(mod, key);
   }
 
+  // If mod is redefined standard modifier
+  for (uint8_t i = 0; i < REDEFINED_MODIFIER_KEYS_NUM; i++) {
+    if ((redefinedModState.map[i].key & mod) == redefinedModState.map[i].key) {
+      redefinedModState.map[i].state = 0;
+      OnRedefinedModifierKeyUp(redefinedModState.map[i].key, key);
+      return;
+    }
+  }
+
   // If key is custom modifier key
   for (uint8_t i = 0; i < CUSTOM_MODIFIER_KEYS_NUM; i++) {
-    if (customModState.map[i].key == key && customModState.map[i].state == 1) {
-      customModState.map[i].state = 0;
-      if (customModState.map[i].used) {
-        customModState.map[i].used = false;
-        if (customModState.map[i].cached && cachedKey.key.key != 0xFF) {
+    if (customModState.stateSet[i].key == key && customModState.stateSet[i].state == 1) {
+      customModState.stateSet[i].state = 0;
+      if (customModState.stateSet[i].used) {
+        customModState.stateSet[i].used = false;
+        if (customModState.stateSet[i].cached && cachedKey.key.key != 0xFF) {
           Keyboard.write(standardKeyMapper.OemToKeyboardHCode(key));
           if (cachedKey.key.released) {
             Keyboard.write(standardKeyMapper.OemToKeyboardHCode(cachedKey.key.key));
@@ -207,11 +231,7 @@ void ModifierEngine::OnKeyUp(uint8_t mod, uint8_t key) {
     return;
   }
 
-  // Release key despite modified or not
-  for (uint8_t i = 0; i < CUSTOM_MODIFIER_KEYS_NUM; i++) {
-    Keyboard.release(customKeyMapper.Modify(customModState.map[i].key, key));
-  }
-  Keyboard.release(standardKeyMapper.OemToKeyboardHCode(key));
+  ReleaseKeyOnAllLayers(key);
 }
 
 
@@ -242,7 +262,7 @@ void ModifierEngine::OnControlKeysChanged(uint8_t before, uint8_t after) {
     SwitchControlKey(standardModState.RIGHT_SHIFT_STATE_INDEX);
   }
   if (beforeMod.bmRightAlt != afterMod.bmRightAlt) {
-    SwitchControlKey(standardModState.RIGHT_ALT_STATE_INDEX);
+    // SwitchControlKey(standardModState.RIGHT_ALT_STATE_INDEX);
   }
   if (beforeMod.bmRightGUI != afterMod.bmRightGUI) {
     SwitchControlKey(standardModState.RIGHT_GUI_STATE_INDEX);
@@ -259,4 +279,72 @@ void ModifierEngine::SwitchControlKey(uint8_t modKeyIndex) {
     Keyboard.release(standardModState.map[modKeyIndex].key);
     standardModState.map[modKeyIndex].state = 0;
   }
+}
+
+
+void ModifierEngine::OnRedefinedModifierKeyDown(uint8_t mod, uint8_t key) {
+
+  switch (mod) {
+    case KEYBOARD_RIGHT_ALT:
+      if (key == KEYBOARD_BACKSPACE) {
+        RefreshAllStates();
+        return;
+      }
+
+      for (uint8_t i = 0; i < L_ALT_MODIFIED_KEYS_NUM; i++) {
+        if (lAltModifiedKeysMap.map[i].originalKey == key) {
+          Keyboard.press(standardKeyMapper.OemToKeyboardHCode(lAltModifiedKeysMap.map[i].modifiedKey));
+          return;
+        }
+      }
+      Keyboard.press(standardKeyMapper.OemToKeyboardHCode(key));
+  }
+}
+
+
+void ModifierEngine::OnRedefinedModifierKeyUp(uint8_t mod, uint8_t key) {
+
+  switch (mod) {
+    case KEYBOARD_RIGHT_ALT:
+      for (uint8_t i = 0; i < L_ALT_MODIFIED_KEYS_NUM; i++) {
+        if (lAltModifiedKeysMap.map[i].originalKey == key) {
+          Keyboard.release(standardKeyMapper.OemToKeyboardHCode(lAltModifiedKeysMap.map[i].modifiedKey));
+          return;
+        }
+      }
+      Keyboard.release(standardKeyMapper.OemToKeyboardHCode(key));
+  }
+}
+
+
+void ModifierEngine::ReleaseKeyOnAllLayers(uint8_t key) {
+
+  for (uint8_t i = 0; i < CUSTOM_MODIFIER_KEYS_NUM; i++) {
+    Keyboard.release(customKeyMapper.Modify(customModState.stateSet[i].key, key));
+  }
+  for (uint8_t i = 0; i < REDEFINED_MODIFIER_KEYS_NUM; i++) {
+    for (uint8_t j = 0; j < L_ALT_MODIFIED_KEYS_NUM; j++) {
+      if (lAltModifiedKeysMap.map[j].originalKey == key) {
+        Keyboard.release(standardKeyMapper.OemToKeyboardHCode(lAltModifiedKeysMap.map[j].modifiedKey));
+      }
+    }
+  }
+  Keyboard.release(standardKeyMapper.OemToKeyboardHCode(key));
+}
+
+
+void ModifierEngine::RefreshAllStates() {
+
+  Keyboard.releaseAll();
+  for (uint8_t i; i < STANDARD_MODIFIER_KEYS_NUM; i++) {
+    standardModState.map[i].state = 0;
+  }
+  for (uint8_t i; i < CUSTOM_MODIFIER_KEYS_NUM; i++) {
+    customModState.stateSet[i].state = 0;
+  }
+  for (uint8_t i; i < REDEFINED_MODIFIER_KEYS_NUM; i++) {
+    redefinedModState.map[i].state = 0;
+  }
+  cachedKey.key.key = 0xFF;
+  cachedKey.key.released = false;
 }
