@@ -103,16 +103,13 @@ uint8_t StandardKeyMapper::OemToAscii(uint8_t mod, uint8_t key) {
 
   uint8_t shift = (mod & 0x22);
 
-  // [a-z]
-  if (VALUE_WITHIN(key, 0x04, 0x1d)) {
-    // Upper case letters
-    if ((kbdLockingKeys.kbdLeds.bmCapsLock == 0 && shift) || (kbdLockingKeys.kbdLeds.bmCapsLock == 1 && shift == 0)) {
+  if (VALUE_WITHIN(key, 0x04, 0x1d)) { // [a-z]
+    if ((kbdLockingKeys.kbdLeds.bmCapsLock == 0 && shift) || (kbdLockingKeys.kbdLeds.bmCapsLock == 1 && shift == 0)) { // Upper case letters
       return (key - 4 + 'A');
-      // Lower case letters
     } else {
-      return (key - 4 + 'a');
-    }  // Numbers
-  } else if (VALUE_WITHIN(key, 0x1e, 0x27)) {
+      return (key - 4 + 'a'); // Lower case letters
+    }
+  } else if (VALUE_WITHIN(key, 0x1e, 0x27)) { // Numbers
     if (shift)
       return ((uint8_t)pgm_read_byte(&getNumKeys()[key - 0x1e]));
     else
@@ -151,6 +148,10 @@ bool PasswordProcessor::ProcessPassword(uint8_t mod, uint8_t key) {
         Keyboard.release(KEY_LEFT_SHIFT);
         Keyboard.release(KEY_RIGHT_SHIFT);
         Keyboard.print(passwordsMap.map[i].password);
+      } else if ((KEYBOARD_LEFT_CTRL & mod) == KEYBOARD_LEFT_CTRL || (KEYBOARD_RIGHT_CTRL & mod) == KEYBOARD_RIGHT_CTRL) {
+        Keyboard.release(KEY_LEFT_CTRL);
+        Keyboard.release(KEY_RIGHT_CTRL);
+        Keyboard.print(passwordsMap.map[i].description);
       } else {
         // RIGHT_ALT mapped key
         Keyboard.print(passwordsMap.map[i].login);

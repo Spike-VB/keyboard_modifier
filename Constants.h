@@ -407,18 +407,20 @@ struct PASSWORDS_MAP {
     uint8_t key;
     String login;
     String password;
+    String description;
   };
 
   LOGIN_PASSWORD_PAIR map[PASSWORDS_NUM] = {
-    LoginPasswordPair(KEYBOARD_1, JOB_MAIN_LOGIN, JOB_MAIN_PASSWORD)
+    LoginPasswordPair(KEYBOARD_1, JOB_MAIN_LOGIN, JOB_MAIN_PASSWORD, JOB_MAIN_DESCRIPTION)
   };
 
 private:
-  LOGIN_PASSWORD_PAIR LoginPasswordPair(uint8_t key, String login, String password) {
+  LOGIN_PASSWORD_PAIR LoginPasswordPair(uint8_t key, String login, String password, String description) {
     LOGIN_PASSWORD_PAIR pair{};
     pair.key = key;
     pair.login = login;
     pair.password = password;
+    pair.description = description;
     return pair;
   }
 };
