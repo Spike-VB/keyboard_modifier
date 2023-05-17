@@ -3,14 +3,16 @@
 // To work with some keyboards have to modify Usb.cpp USB::InTransfer() method of USB_Host_Shield_Library_2.0.
 // Have to remove 241-246 lines.
 #include <Keyboard.h>
+#include <string.h>
 
 #include "Constants.h"
 
 
-class StandardKeyMapper {
+class StandardKeyMapper : public KeyboardReportParser {
 
 public:
   uint8_t OemToKeyboardHCode(uint8_t key);
+  uint8_t OemToAscii(uint8_t mod, uint8_t key);
 };
 
 
@@ -25,8 +27,16 @@ public:
 
 class PasswordProcessor {
 
+  bool locked = true;
+  String password;
+
+  StandardKeyMapper standardKeyMapper;
+
 public:
-  bool processPassword(uint8_t mod, uint8_t key);
+  bool unlockingModeActive = false;
+
+  void UnlockPasswordProcessor(uint8_t mod, uint8_t key);
+  bool ProcessPassword(uint8_t mod, uint8_t key);
 };
 
 
@@ -90,6 +100,29 @@ uint8_t StandardKeyMapper::OemToKeyboardHCode(uint8_t key) {
   return (0);
 }
 
+uint8_t StandardKeyMapper::OemToAscii(uint8_t mod, uint8_t key) {
+
+  uint8_t shift = (mod & 0x22);
+
+  // [a-z]
+  if (VALUE_WITHIN(key, 0x04, 0x1d)) {
+    // Upper case letters
+    if ((kbdLockingKeys.kbdLeds.bmCapsLock == 0 && shift) || (kbdLockingKeys.kbdLeds.bmCapsLock == 1 && shift == 0)) {
+      return (key - 4 + 'A');
+      // Lower case letters
+    } else {
+      return (key - 4 + 'a');
+    }  // Numbers
+  } else if (VALUE_WITHIN(key, 0x1e, 0x27)) {
+    if (shift)
+      return ((uint8_t)pgm_read_byte(&getNumKeys()[key - 0x1e]));
+    else
+      return ((key == 0x27) ? '0' : key - 0x1e + '1');
+  }
+
+  return (0);
+}
+
 
 uint8_t CustomKeyMapper::Modify(uint8_t customModKey, uint8_t key) {
 
@@ -105,7 +138,11 @@ uint8_t CustomKeyMapper::Modify(uint8_t customModKey, uint8_t key) {
 }
 
 
-bool PasswordProcessor::processPassword(uint8_t mod, uint8_t key) {
+bool PasswordProcessor::ProcessPassword(uint8_t mod, uint8_t key) {
+
+  if (locked) {
+    return;
+  }
 
   // RIGHT_ALT mapped key (PASSWORDS)
   for (uint8_t i = 0; i < PASSWORDS_NUM; i++) {
@@ -119,10 +156,30 @@ bool PasswordProcessor::processPassword(uint8_t mod, uint8_t key) {
         // RIGHT_ALT mapped key
         Keyboard.print(passwordsMap.map[i].login);
       }
-      return true;;
+      return true;
     }
   }
   return false;
+}
+
+
+void PasswordProcessor::UnlockPasswordProcessor(uint8_t mod, uint8_t key) {
+
+  if (KEYBOARD_RETURN == key) {
+    if (password.compareTo(SYSTEM_PASSWORD) == 0) {
+      locked = false;
+      unlockingModeActive = false;
+      password = "";
+      return;
+    } else {
+      locked = true;
+      unlockingModeActive = false;
+      password = "";
+      return;
+    }
+  }
+
+  password = password + (char)standardKeyMapper.OemToAscii(mod, key);
 }
 
 
@@ -166,11 +223,15 @@ void ModifierEngine::OnKeyDown(uint8_t mod, uint8_t key) {
     PrintKey(mod, key);
   }
 
+  if (passwordProcessor.unlockingModeActive) {
+    passwordProcessor.UnlockPasswordProcessor(mod, key);
+    return;
+  }
+
   // If mod is redefined standard modifier
   for (uint8_t i = 0; i < REDEFINED_MODIFIER_KEYS_NUM; i++) {
     if ((redefinedModState.map[i].key & mod) == redefinedModState.map[i].key) {
       redefinedModState.map[i].state = 1;
-      // OnRedefinedModifierKeyDown(redefinedModState.map[i].key, key);
       OnRedefinedModifierKeyDown(mod, key);
       return;
     }
@@ -222,6 +283,10 @@ void ModifierEngine::OnKeyUp(uint8_t mod, uint8_t key) {
   if (DEBUG_ENABLED) {
     Serial.print("UP ");
     PrintKey(mod, key);
+  }
+
+  if (passwordProcessor.unlockingModeActive) {
+    return;
   }
 
   // If mod is redefined standard modifier
@@ -324,8 +389,14 @@ void ModifierEngine::OnRedefinedModifierKeyDown(uint8_t mod, uint8_t key) {
       return;
     }
 
+    // RIGHT_ALT + ESC
+    if (key == KEYBOARD_ESC) {
+      passwordProcessor.unlockingModeActive = true;
+      return;
+    }
+
     // Process passwords
-    if (passwordProcessor.processPassword(mod, key)) {
+    if (passwordProcessor.ProcessPassword(mod, key)) {
       return;
     }
 
@@ -392,4 +463,5 @@ void ModifierEngine::RefreshAllStates() {
   }
   cachedKey.key.key = 0xFF;
   cachedKey.key.released = false;
+  passwordProcessor.unlockingModeActive = false;
 }
