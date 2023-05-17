@@ -23,10 +23,18 @@ public:
 };
 
 
+class PasswordProcessor {
+
+public:
+  bool processPassword(uint8_t mod, uint8_t key);
+};
+
+
 class ModifierEngine : public KeyboardReportParser {
 
   StandardKeyMapper standardKeyMapper;
   CustomKeyMapper customKeyMapper;
+  PasswordProcessor passwordProcessor;
 
 public:
   void PrintKey(uint8_t mod, uint8_t key);
@@ -97,6 +105,27 @@ uint8_t CustomKeyMapper::Modify(uint8_t customModKey, uint8_t key) {
 }
 
 
+bool PasswordProcessor::processPassword(uint8_t mod, uint8_t key) {
+
+  // RIGHT_ALT mapped key (PASSWORDS)
+  for (uint8_t i = 0; i < PASSWORDS_NUM; i++) {
+    if (passwordsMap.map[i].key == key) {
+      // RIGHT_ALT + SHIFT + mapped key
+      if ((KEYBOARD_LEFT_SHIFT & mod) == KEYBOARD_LEFT_SHIFT || (KEYBOARD_RIGHT_SHIFT & mod) == KEYBOARD_RIGHT_SHIFT) {
+        Keyboard.release(KEY_LEFT_SHIFT);
+        Keyboard.release(KEY_RIGHT_SHIFT);
+        Keyboard.print(passwordsMap.map[i].password);
+      } else {
+        // RIGHT_ALT mapped key
+        Keyboard.print(passwordsMap.map[i].login);
+      }
+      return true;;
+    }
+  }
+  return false;
+}
+
+
 void ModifierEngine::PrintKey(uint8_t m, uint8_t key) {
 
   MODIFIERKEYS mod;
@@ -141,7 +170,8 @@ void ModifierEngine::OnKeyDown(uint8_t mod, uint8_t key) {
   for (uint8_t i = 0; i < REDEFINED_MODIFIER_KEYS_NUM; i++) {
     if ((redefinedModState.map[i].key & mod) == redefinedModState.map[i].key) {
       redefinedModState.map[i].state = 1;
-      OnRedefinedModifierKeyDown(redefinedModState.map[i].key, key);
+      // OnRedefinedModifierKeyDown(redefinedModState.map[i].key, key);
+      OnRedefinedModifierKeyDown(mod, key);
       return;
     }
   }
@@ -198,7 +228,8 @@ void ModifierEngine::OnKeyUp(uint8_t mod, uint8_t key) {
   for (uint8_t i = 0; i < REDEFINED_MODIFIER_KEYS_NUM; i++) {
     if ((redefinedModState.map[i].key & mod) == redefinedModState.map[i].key) {
       redefinedModState.map[i].state = 0;
-      OnRedefinedModifierKeyUp(redefinedModState.map[i].key, key);
+      // OnRedefinedModifierKeyUp(redefinedModState.map[i].key, key);
+      OnRedefinedModifierKeyUp(mod, key);
       return;
     }
   }
@@ -284,35 +315,49 @@ void ModifierEngine::SwitchControlKey(uint8_t modKeyIndex) {
 
 void ModifierEngine::OnRedefinedModifierKeyDown(uint8_t mod, uint8_t key) {
 
-  switch (mod) {
-    case KEYBOARD_RIGHT_ALT:
-      if (key == KEYBOARD_BACKSPACE) {
-        RefreshAllStates();
+  // RIGHT_ALT Down
+  if ((KEYBOARD_RIGHT_ALT & mod) == KEYBOARD_RIGHT_ALT) {
+
+    // RIGHT_ALT + BACKSPACE
+    if (key == KEYBOARD_BACKSPACE) {
+      RefreshAllStates();
+      return;
+    }
+
+    // Process passwords
+    if (passwordProcessor.processPassword(mod, key)) {
+      return;
+    }
+
+    // RIGHT_ALT + mapped key (L_ALT_MODIFIED_KEYS_MAP)
+    for (uint8_t i = 0; i < L_ALT_MODIFIED_KEYS_NUM; i++) {
+      if (lAltModifiedKeysMap.map[i].originalKey == key) {
+        Keyboard.press(standardKeyMapper.OemToKeyboardHCode(lAltModifiedKeysMap.map[i].modifiedKey));
         return;
       }
+    }
 
-      for (uint8_t i = 0; i < L_ALT_MODIFIED_KEYS_NUM; i++) {
-        if (lAltModifiedKeysMap.map[i].originalKey == key) {
-          Keyboard.press(standardKeyMapper.OemToKeyboardHCode(lAltModifiedKeysMap.map[i].modifiedKey));
-          return;
-        }
-      }
-      Keyboard.press(standardKeyMapper.OemToKeyboardHCode(key));
+    // RIGHT_ALT + not mapped key
+    Keyboard.press(standardKeyMapper.OemToKeyboardHCode(key));
   }
 }
 
 
 void ModifierEngine::OnRedefinedModifierKeyUp(uint8_t mod, uint8_t key) {
 
-  switch (mod) {
-    case KEYBOARD_RIGHT_ALT:
-      for (uint8_t i = 0; i < L_ALT_MODIFIED_KEYS_NUM; i++) {
-        if (lAltModifiedKeysMap.map[i].originalKey == key) {
-          Keyboard.release(standardKeyMapper.OemToKeyboardHCode(lAltModifiedKeysMap.map[i].modifiedKey));
-          return;
-        }
+  // RIGHT_ALT Up
+  if ((KEYBOARD_RIGHT_ALT & mod) == KEYBOARD_RIGHT_ALT) {
+
+    // RIGHT_ALT + mapped key
+    for (uint8_t i = 0; i < L_ALT_MODIFIED_KEYS_NUM; i++) {
+      if (lAltModifiedKeysMap.map[i].originalKey == key) {
+        Keyboard.release(standardKeyMapper.OemToKeyboardHCode(lAltModifiedKeysMap.map[i].modifiedKey));
+        return;
       }
-      Keyboard.release(standardKeyMapper.OemToKeyboardHCode(key));
+    }
+
+    // RIGHT_ALT + not mapped key
+    Keyboard.release(standardKeyMapper.OemToKeyboardHCode(key));
   }
 }
 

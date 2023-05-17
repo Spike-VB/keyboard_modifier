@@ -116,10 +116,10 @@ bool DEBUG_ENABLED = false;
 #define CUSTOM_MOD_KEY_1 KEYBOARD_SPACE
 
 // Number of keys modified by 1st modifier
-#define MODIFIED_KEYS_NUM_1 10
+#define MODIFIED_KEYS_NUM_1 23
 
 // Number of keys modified by left Alt
-#define L_ALT_MODIFIED_KEYS_NUM 13
+#define L_ALT_MODIFIED_KEYS_NUM 0
 
 // Number of key pairs if struct KEYSMAP
 #define KEY_CODES_NUM 60
@@ -132,6 +132,9 @@ bool DEBUG_ENABLED = false;
 
 // Number of redefined standard modifier keys
 #define REDEFINED_MODIFIER_KEYS_NUM 1
+
+// Number of passwords
+#define PASSWORDS_NUM 1
 
 // Interruption timeout
 #define INTERRUPTION_TIMEOUT 100
@@ -155,7 +158,20 @@ struct MODIFIED_KEYS_MAP_1 {
     OriginalModifiedKeyPair(KEYBOARD_L, KEYBOARD_RIGHT_ARROW),
     OriginalModifiedKeyPair(KEYBOARD_SEMICOLON, KEYBOARD_PAGE_DOWN),
     OriginalModifiedKeyPair(KEYBOARD_M, KEYBOARD_DELETE),
-    OriginalModifiedKeyPair(KEYBOARD_BACKSPACE, KEYBOARD_SPACE)
+    OriginalModifiedKeyPair(KEYBOARD_BACKSPACE, KEYBOARD_SPACE),
+    OriginalModifiedKeyPair(KEYBOARD_ESC, KEYBOARD_APOSTROPHE),
+    OriginalModifiedKeyPair(KEYBOARD_1, KEYBOARD_F1),
+    OriginalModifiedKeyPair(KEYBOARD_2, KEYBOARD_F2),
+    OriginalModifiedKeyPair(KEYBOARD_3, KEYBOARD_F3),
+    OriginalModifiedKeyPair(KEYBOARD_4, KEYBOARD_F4),
+    OriginalModifiedKeyPair(KEYBOARD_5, KEYBOARD_F5),
+    OriginalModifiedKeyPair(KEYBOARD_6, KEYBOARD_F6),
+    OriginalModifiedKeyPair(KEYBOARD_7, KEYBOARD_F7),
+    OriginalModifiedKeyPair(KEYBOARD_8, KEYBOARD_F8),
+    OriginalModifiedKeyPair(KEYBOARD_9, KEYBOARD_F9),
+    OriginalModifiedKeyPair(KEYBOARD_0, KEYBOARD_F10),
+    OriginalModifiedKeyPair(KEYBOARD_MINUS, KEYBOARD_F11),
+    OriginalModifiedKeyPair(KEYBOARD_EQUALS, KEYBOARD_F12)
   };
 
 private:
@@ -176,21 +192,7 @@ struct L_ALT_MODIFIED_KEYS_MAP {
     uint8_t modifiedKey;
   };
 
-  ORIGINAL_MODIFIED_KEY_PAIR map[L_ALT_MODIFIED_KEYS_NUM] = {
-    OriginalModifiedKeyPair(KEYBOARD_APOSTROPHE, 0x00),
-    OriginalModifiedKeyPair(KEYBOARD_1, KEYBOARD_F1),
-    OriginalModifiedKeyPair(KEYBOARD_2, KEYBOARD_F2),
-    OriginalModifiedKeyPair(KEYBOARD_3, KEYBOARD_F3),
-    OriginalModifiedKeyPair(KEYBOARD_4, KEYBOARD_F4),
-    OriginalModifiedKeyPair(KEYBOARD_5, KEYBOARD_F5),
-    OriginalModifiedKeyPair(KEYBOARD_6, KEYBOARD_F6),
-    OriginalModifiedKeyPair(KEYBOARD_7, KEYBOARD_F7),
-    OriginalModifiedKeyPair(KEYBOARD_8, KEYBOARD_F8),
-    OriginalModifiedKeyPair(KEYBOARD_9, KEYBOARD_F9),
-    OriginalModifiedKeyPair(KEYBOARD_0, KEYBOARD_F10),
-    OriginalModifiedKeyPair(KEYBOARD_MINUS, KEYBOARD_F11),
-    OriginalModifiedKeyPair(KEYBOARD_EQUALS, KEYBOARD_F12),
-  };
+  ORIGINAL_MODIFIED_KEY_PAIR map[L_ALT_MODIFIED_KEYS_NUM] = {};
 
 private:
   ORIGINAL_MODIFIED_KEY_PAIR OriginalModifiedKeyPair(uint8_t originalKey, uint8_t modifiedKey) {
@@ -212,9 +214,6 @@ struct KEYSMAP {
 
   // this map has to be sorted by kbdCode to provide binary search
   KEYS_PAIR map[KEY_CODES_NUM] = {
-    //==========TECHNICAL==========//
-    KeysPair(0x00, 0x60),
-    //==========TECHNICAL==========//
     KeysPair(0x28, 0xB0),
     KeysPair(0x29, 0xB1),
     KeysPair(0x2A, 0xB2),
@@ -226,10 +225,7 @@ struct KEYSMAP {
     KeysPair(0x31, 0x5C),
     KeysPair(0x33, 0x3B),
     KeysPair(0x34, 0x27),
-    //==========REDEFINED==========//
-    //  KeysPair(0x35, 0x60),
-    KeysPair(0x35, 0xB1),
-    //==========REDEFINED==========//
+    KeysPair(0x35, 0x60),
     KeysPair(0x36, 0x2C),
     KeysPair(0x37, 0x2E),
     KeysPair(0x38, 0x2F),
@@ -399,6 +395,29 @@ private:
 };
 
 
+struct PASSWORDS_MAP {
+
+  struct LOGIN_PASSWORD_PAIR {
+    uint8_t key;
+    String login;
+    String password;
+  };
+
+  LOGIN_PASSWORD_PAIR map[PASSWORDS_NUM] = {
+    LoginPasswordPair(KEYBOARD_1, JOB_MAIN_LOGIN, JOB_MAIN_PASSWORD)
+  };
+
+private:
+  LOGIN_PASSWORD_PAIR LoginPasswordPair(uint8_t key, String login, String password) {
+    LOGIN_PASSWORD_PAIR pair{};
+    pair.key = key;
+    pair.login = login;
+    pair.password = password;
+    return pair;
+  }
+};
+
+
 struct MODIFIED_KEYS_MAP_1 modifiedKeysMap_1;            // Map of keys modified by custom modifier 1
 struct L_ALT_MODIFIED_KEYS_MAP lAltModifiedKeysMap;      // Map of keys modified by left Alt
 struct KEYSMAP keysMap;                                  // Map of pairs of keyboard key code and key code for <Keyboard.h> library
@@ -406,3 +425,4 @@ struct STANDARD_MODIFIER_KEYS_STATE standardModState;    // State of standard mo
 struct CUSTOM_MODIFIER_KEYS_STATE customModState;        // State of custom modifier keys
 struct REDEFINED_MODIFIER_KEYS_STATE redefinedModState;  // State of redefined modifier keys
 struct CACHED_KEY cachedKey;                             // Cached key
+struct PASSWORDS_MAP passwordsMap;                       // Map of key-login-password
