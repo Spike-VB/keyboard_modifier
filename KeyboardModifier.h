@@ -27,13 +27,12 @@ public:
 
 class PasswordProcessor {
 
-  bool locked = true;
-  String password;
-
   StandardKeyMapper standardKeyMapper;
 
 public:
+  bool locked = true;
   bool unlockingModeActive = false;
+  String password;
 
   void UnlockPasswordProcessor(uint8_t mod, uint8_t key);
   bool ProcessPassword(uint8_t mod, uint8_t key);
@@ -293,7 +292,6 @@ void ModifierEngine::OnKeyUp(uint8_t mod, uint8_t key) {
   for (uint8_t i = 0; i < REDEFINED_MODIFIER_KEYS_NUM; i++) {
     if ((redefinedModState.map[i].key & mod) == redefinedModState.map[i].key) {
       redefinedModState.map[i].state = 0;
-      // OnRedefinedModifierKeyUp(redefinedModState.map[i].key, key);
       OnRedefinedModifierKeyUp(mod, key);
       return;
     }
@@ -383,14 +381,14 @@ void ModifierEngine::OnRedefinedModifierKeyDown(uint8_t mod, uint8_t key) {
   // RIGHT_ALT Down
   if ((KEYBOARD_RIGHT_ALT & mod) == KEYBOARD_RIGHT_ALT) {
 
-    // RIGHT_ALT + BACKSPACE
-    if (key == KEYBOARD_BACKSPACE) {
+    // RIGHT_ALT + REFRESH_KEY
+    if (key == REFRESH_KEY) {
       RefreshAllStates();
       return;
     }
 
     // RIGHT_ALT + ESC
-    if (key == KEYBOARD_ESC) {
+    if (key == UNLOCKING_MODE_KEY) {
       passwordProcessor.unlockingModeActive = true;
       return;
     }
@@ -463,5 +461,7 @@ void ModifierEngine::RefreshAllStates() {
   }
   cachedKey.key.key = 0xFF;
   cachedKey.key.released = false;
+  passwordProcessor.locked = true;
+  passwordProcessor.password = "";
   passwordProcessor.unlockingModeActive = false;
 }

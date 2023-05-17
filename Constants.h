@@ -115,6 +115,12 @@ bool DEBUG_ENABLED = false;
 // Custom modifier keys
 #define CUSTOM_MOD_KEY_1 KEYBOARD_SPACE
 
+// Refresh key
+#define REFRESH_KEY KEYBOARD_BACKSPACE
+
+// Unlocking mode key
+#define UNLOCKING_MODE_KEY KEYBOARD_ESC
+
 // Number of keys modified by 1st modifier
 #define MODIFIED_KEYS_NUM_1 23
 
