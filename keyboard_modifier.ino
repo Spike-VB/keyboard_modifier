@@ -35,6 +35,11 @@ void setup() {
   MsTimer2::start();
 
   Keyboard.releaseAll();
+
+  pinMode(LOCKED_LED, OUTPUT);
+  pinMode(OPEND_LED, OUTPUT);
+  digitalWrite(LOCKED_LED, LOW);
+  digitalWrite(OPEND_LED, LOW);
 }
 
 void loop() {
@@ -44,4 +49,5 @@ void loop() {
 
 void timerInterupt() {
   engine.ProcessCachedKey();
+  engine.ControlLeds();
 }

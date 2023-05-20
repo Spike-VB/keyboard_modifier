@@ -112,6 +112,10 @@
 // Enable debug (serial print)
 bool DEBUG_ENABLED = false;
 
+// Password processor opend/locked leds
+#define LOCKED_LED 8
+#define OPEND_LED 11
+
 // Custom modifier keys
 #define CUSTOM_MOD_KEY_1 KEYBOARD_SPACE
 
@@ -122,10 +126,10 @@ bool DEBUG_ENABLED = false;
 #define UNLOCKING_MODE_KEY KEYBOARD_ESC
 
 // Number of keys modified by 1st modifier
-#define MODIFIED_KEYS_NUM_1 23
+#define MODIFIED_KEYS_NUM_1 24
 
-// Number of keys modified by left Alt
-#define L_ALT_MODIFIED_KEYS_NUM 0
+// Number of keys modified by right Alt
+#define R_ALT_MODIFIED_KEYS_NUM 0
 
 // Number of key pairs if struct KEYSMAP
 #define KEY_CODES_NUM 60
@@ -164,6 +168,7 @@ struct MODIFIED_KEYS_MAP_1 {
     OriginalModifiedKeyPair(KEYBOARD_L, KEYBOARD_RIGHT_ARROW),
     OriginalModifiedKeyPair(KEYBOARD_SEMICOLON, KEYBOARD_PAGE_DOWN),
     OriginalModifiedKeyPair(KEYBOARD_M, KEYBOARD_DELETE),
+    OriginalModifiedKeyPair(KEYBOARD_SINGLE_QUOTE, KEYBOARD_BACKSPACE),
     OriginalModifiedKeyPair(KEYBOARD_BACKSPACE, KEYBOARD_SPACE),
     OriginalModifiedKeyPair(KEYBOARD_ESC, KEYBOARD_APOSTROPHE),
     OriginalModifiedKeyPair(KEYBOARD_1, KEYBOARD_F1),
@@ -190,15 +195,15 @@ private:
 };
 
 
-// Map of keys modified by left Alt
-struct L_ALT_MODIFIED_KEYS_MAP {
+// Map of keys modified by right Alt
+struct R_ALT_MODIFIED_KEYS_MAP {
 
   struct ORIGINAL_MODIFIED_KEY_PAIR {
     uint8_t originalKey;
     uint8_t modifiedKey;
   };
 
-  ORIGINAL_MODIFIED_KEY_PAIR map[L_ALT_MODIFIED_KEYS_NUM] = {};
+  ORIGINAL_MODIFIED_KEY_PAIR map[R_ALT_MODIFIED_KEYS_NUM] = {};
 
 private:
   ORIGINAL_MODIFIED_KEY_PAIR OriginalModifiedKeyPair(uint8_t originalKey, uint8_t modifiedKey) {
@@ -300,14 +305,14 @@ struct STANDARD_MODIFIER_KEYS_STATE {
   };
 
   // Modifier keys indices
-  uint8_t LEFT_CTRL_STATE_INDEX = 0x00;
-  uint8_t LEFT_SHIFT_STATE_INDEX = 0x01;
-  uint8_t LEFT_ALT_STATE_INDEX = 0x02;
-  uint8_t LEFT_GUI_STATE_INDEX = 0x03;
-  uint8_t RIGHT_CTRL_STATE_INDEX = 0x04;
-  uint8_t RIGHT_SHIFT_STATE_INDEX = 0x05;
-  uint8_t RIGHT_ALT_STATE_INDEX = 0x06;
-  uint8_t RIGHT_GUI_STATE_INDEX = 0x07;
+  uint8_t LEFT_CTRL_STATE_INDEX = 0;
+  uint8_t LEFT_SHIFT_STATE_INDEX = 1;
+  uint8_t LEFT_ALT_STATE_INDEX = 2;
+  uint8_t LEFT_GUI_STATE_INDEX = 3;
+  uint8_t RIGHT_CTRL_STATE_INDEX = 4;
+  uint8_t RIGHT_SHIFT_STATE_INDEX = 5;
+  uint8_t RIGHT_ALT_STATE_INDEX = 6;
+  uint8_t RIGHT_GUI_STATE_INDEX = 7;
 
   KEY_STATE map[STANDARD_MODIFIER_KEYS_NUM] = {
     KeyState(KEY_LEFT_CTRL),
@@ -427,7 +432,7 @@ private:
 
 
 struct MODIFIED_KEYS_MAP_1 modifiedKeysMap_1;            // Map of keys modified by custom modifier 1
-struct L_ALT_MODIFIED_KEYS_MAP lAltModifiedKeysMap;      // Map of keys modified by left Alt
+struct R_ALT_MODIFIED_KEYS_MAP rAltModifiedKeysMap;      // Map of keys modified by right Alt
 struct KEYSMAP keysMap;                                  // Map of pairs of keyboard key code and key code for <Keyboard.h> library
 struct STANDARD_MODIFIER_KEYS_STATE standardModState;    // State of standard modifier keys
 struct CUSTOM_MODIFIER_KEYS_STATE customModState;        // State of custom modifier keys

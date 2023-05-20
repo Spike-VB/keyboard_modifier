@@ -41,6 +41,7 @@ public:
 
 class ModifierEngine : public KeyboardReportParser {
 
+  MODIFIERKEYS modKeys;
   StandardKeyMapper standardKeyMapper;
   CustomKeyMapper customKeyMapper;
   PasswordProcessor passwordProcessor;
@@ -48,6 +49,7 @@ class ModifierEngine : public KeyboardReportParser {
 public:
   void PrintKey(uint8_t mod, uint8_t key);
   void ProcessCachedKey();
+  void ControlLeds();
 
 protected:
   void OnKeyDown(uint8_t mod, uint8_t key);
@@ -103,13 +105,13 @@ uint8_t StandardKeyMapper::OemToAscii(uint8_t mod, uint8_t key) {
 
   uint8_t shift = (mod & 0x22);
 
-  if (VALUE_WITHIN(key, 0x04, 0x1d)) { // [a-z]
-    if ((kbdLockingKeys.kbdLeds.bmCapsLock == 0 && shift) || (kbdLockingKeys.kbdLeds.bmCapsLock == 1 && shift == 0)) { // Upper case letters
+  if (VALUE_WITHIN(key, 0x04, 0x1d)) {                                                                                  // [a-z]
+    if ((kbdLockingKeys.kbdLeds.bmCapsLock == 0 && shift) || (kbdLockingKeys.kbdLeds.bmCapsLock == 1 && shift == 0)) {  // Upper case letters
       return (key - 4 + 'A');
     } else {
-      return (key - 4 + 'a'); // Lower case letters
+      return (key - 4 + 'a');  // Lower case letters
     }
-  } else if (VALUE_WITHIN(key, 0x1e, 0x27)) { // Numbers
+  } else if (VALUE_WITHIN(key, 0x1e, 0x27)) {  // Numbers
     if (shift)
       return ((uint8_t)pgm_read_byte(&getNumKeys()[key - 0x1e]));
     else
@@ -183,23 +185,22 @@ void PasswordProcessor::UnlockPasswordProcessor(uint8_t mod, uint8_t key) {
 }
 
 
-void ModifierEngine::PrintKey(uint8_t m, uint8_t key) {
+void ModifierEngine::PrintKey(uint8_t mod, uint8_t key) {
 
-  MODIFIERKEYS mod;
-  *((uint8_t*)&mod) = m;
-  Serial.print((mod.bmLeftCtrl == 1) ? "C" : "_");
-  Serial.print((mod.bmLeftShift == 1) ? "S" : "_");
-  Serial.print((mod.bmLeftAlt == 1) ? "A" : "_");
-  Serial.print((mod.bmLeftGUI == 1) ? "G" : "_");
+  *((uint8_t*)&modKeys) = mod;
+  Serial.print((modKeys.bmLeftCtrl == 1) ? "C" : "_");
+  Serial.print((modKeys.bmLeftShift == 1) ? "S" : "_");
+  Serial.print((modKeys.bmLeftAlt == 1) ? "A" : "_");
+  Serial.print((modKeys.bmLeftGUI == 1) ? "G" : "_");
 
   Serial.print(" >");
   PrintHex<uint8_t>(key, 0x80);
   Serial.print("< ");
 
-  Serial.print((mod.bmRightCtrl == 1) ? "C" : "_");
-  Serial.print((mod.bmRightShift == 1) ? "S" : "_");
-  Serial.print((mod.bmRightAlt == 1) ? "A" : "_");
-  Serial.println((mod.bmRightGUI == 1) ? "G" : "_");
+  Serial.print((modKeys.bmRightCtrl == 1) ? "C" : "_");
+  Serial.print((modKeys.bmRightShift == 1) ? "S" : "_");
+  Serial.print((modKeys.bmRightAlt == 1) ? "A" : "_");
+  Serial.println((modKeys.bmRightGUI == 1) ? "G" : "_");
 }
 
 
@@ -212,6 +213,22 @@ void ModifierEngine::ProcessCachedKey() {
       Keyboard.press(customKeyMapper.Modify(customModState.stateSet[cachedKey.key.customModifierIndex].key, cachedKey.key.key));
     }
     cachedKey.key.key = 0xFF;
+  }
+}
+
+void ModifierEngine::ControlLeds() {
+  if (passwordProcessor.unlockingModeActive) {
+    digitalWrite(LOCKED_LED, HIGH);
+    digitalWrite(OPEND_LED, HIGH);
+    return;
+  }
+
+  if (passwordProcessor.locked) {
+    digitalWrite(LOCKED_LED, HIGH);
+    digitalWrite(OPEND_LED, LOW);
+  } else {
+    digitalWrite(LOCKED_LED, LOW);
+    digitalWrite(OPEND_LED, HIGH);
   }
 }
 
@@ -292,7 +309,6 @@ void ModifierEngine::OnKeyUp(uint8_t mod, uint8_t key) {
   // If mod is redefined standard modifier
   for (uint8_t i = 0; i < REDEFINED_MODIFIER_KEYS_NUM; i++) {
     if ((redefinedModState.map[i].key & mod) == redefinedModState.map[i].key) {
-      redefinedModState.map[i].state = 0;
       OnRedefinedModifierKeyUp(mod, key);
       return;
     }
@@ -358,6 +374,10 @@ void ModifierEngine::OnControlKeysChanged(uint8_t before, uint8_t after) {
   }
   if (beforeMod.bmRightAlt != afterMod.bmRightAlt) {
     // SwitchControlKey(standardModState.RIGHT_ALT_STATE_INDEX);
+    if (redefinedModState.map[0].state == 1) {
+      redefinedModState.map[0].state = 0;
+      Keyboard.release(KEY_RIGHT_ALT);
+    }
   }
   if (beforeMod.bmRightGUI != afterMod.bmRightGUI) {
     SwitchControlKey(standardModState.RIGHT_GUI_STATE_INDEX);
@@ -399,15 +419,16 @@ void ModifierEngine::OnRedefinedModifierKeyDown(uint8_t mod, uint8_t key) {
       return;
     }
 
-    // RIGHT_ALT + mapped key (L_ALT_MODIFIED_KEYS_MAP)
-    for (uint8_t i = 0; i < L_ALT_MODIFIED_KEYS_NUM; i++) {
-      if (lAltModifiedKeysMap.map[i].originalKey == key) {
-        Keyboard.press(standardKeyMapper.OemToKeyboardHCode(lAltModifiedKeysMap.map[i].modifiedKey));
+    // RIGHT_ALT + mapped key (R_ALT_MODIFIED_KEYS_MAP)
+    for (uint8_t i = 0; i < R_ALT_MODIFIED_KEYS_NUM; i++) {
+      if (rAltModifiedKeysMap.map[i].originalKey == key) {
+        Keyboard.press(standardKeyMapper.OemToKeyboardHCode(rAltModifiedKeysMap.map[i].modifiedKey));
         return;
       }
     }
 
     // RIGHT_ALT + not mapped key
+    Keyboard.press(KEY_RIGHT_ALT);
     Keyboard.press(standardKeyMapper.OemToKeyboardHCode(key));
   }
 }
@@ -419,9 +440,9 @@ void ModifierEngine::OnRedefinedModifierKeyUp(uint8_t mod, uint8_t key) {
   if ((KEYBOARD_RIGHT_ALT & mod) == KEYBOARD_RIGHT_ALT) {
 
     // RIGHT_ALT + mapped key
-    for (uint8_t i = 0; i < L_ALT_MODIFIED_KEYS_NUM; i++) {
-      if (lAltModifiedKeysMap.map[i].originalKey == key) {
-        Keyboard.release(standardKeyMapper.OemToKeyboardHCode(lAltModifiedKeysMap.map[i].modifiedKey));
+    for (uint8_t i = 0; i < R_ALT_MODIFIED_KEYS_NUM; i++) {
+      if (rAltModifiedKeysMap.map[i].originalKey == key) {
+        Keyboard.release(standardKeyMapper.OemToKeyboardHCode(rAltModifiedKeysMap.map[i].modifiedKey));
         return;
       }
     }
@@ -438,9 +459,9 @@ void ModifierEngine::ReleaseKeyOnAllLayers(uint8_t key) {
     Keyboard.release(customKeyMapper.Modify(customModState.stateSet[i].key, key));
   }
   for (uint8_t i = 0; i < REDEFINED_MODIFIER_KEYS_NUM; i++) {
-    for (uint8_t j = 0; j < L_ALT_MODIFIED_KEYS_NUM; j++) {
-      if (lAltModifiedKeysMap.map[j].originalKey == key) {
-        Keyboard.release(standardKeyMapper.OemToKeyboardHCode(lAltModifiedKeysMap.map[j].modifiedKey));
+    for (uint8_t j = 0; j < R_ALT_MODIFIED_KEYS_NUM; j++) {
+      if (rAltModifiedKeysMap.map[j].originalKey == key) {
+        Keyboard.release(standardKeyMapper.OemToKeyboardHCode(rAltModifiedKeysMap.map[j].modifiedKey));
       }
     }
   }
